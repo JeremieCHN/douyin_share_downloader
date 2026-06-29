@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抖音无水印下载</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            resize: vertical;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea::placeholder {
+            color: #bbb;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #555;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #e0e0e0;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result {
+            margin-top: 28px;
+            padding: 24px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            word-break: break-all;
+        }
+
+        .result-meta {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .result-meta.image-post {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .file-list {
+            list-style: none;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #fff;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #eee;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: #e3f2fd;
+            color: #1976d2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .file-icon.image {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+
+        .file-icon.audio {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .file-name {
+            font-size: 14px;
+            color: #333;
+            word-break: break-all;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 280px;
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        .download-btn {
+            padding: 8px 16px;
+            background: #667eea;
+            color: #fff;
+            border-radius: 6px;
+            font-size: 13px;
+            text-decoration: none;
+            flex-shrink: 0;
+        }
+
+        .download-btn:hover {
+            background: #5568d3;
+        }
+
+        .error {
+            margin-top: 20px;
+            padding: 16px;
+            background: #ffebee;
+            color: #c62828;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 24px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .tip {
+            margin-top: 16px;
+            padding: 12px 16px;
+            background: #fffde7;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #795548;
+            line-height: 1.6;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .image-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .image-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .image-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+            padding: 8px 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .image-item:hover .image-overlay {
+            opacity: 1;
+        }
+
+        .image-index {
+            color: #fff;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            cursor: zoom-out;
+        }
+
+        .lightbox.show {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .image-download-overlay {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .image-item:hover .image-download-overlay {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 抖音无水印下载</h1>
+        <p class="subtitle">粘贴抖音分享文本，一键下载无水印视频/图片</p>
+
+        <div class="input-group">
+            <textarea id="shareText" placeholder="复制抖音分享文本粘贴到这里&#10;例如：4.30 复制打开抖音，看看【xxx的作品】#话题  https://v.douyin.com/xxxx/"></textarea>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn-secondary" onclick="clearInput()">清空</button>
+            <button class="btn-primary" id="downloadBtn" onclick="startDownload()">立即下载</button>
+        </div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="result" id="resultBox">
+            <div class="result-title" id="resultTitle"></div>
+            <span class="result-meta" id="resultMeta"></span>
+            <div class="image-grid" id="imageGrid"></div>
+            <ul class="file-list" id="fileList"></ul>
+        </div>
+
+        <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+            <button class="lightbox-close" onclick="closeLightbox()">×</button>
+            <img id="lightboxImage" src="" alt="预览">
+        </div>
+
+        <div class="tip">
+            💡 支持普通视频和图文作品。分享文本可直接从抖音 App 「分享 → 复制链接」获取。
+        </div>
+    </div>
+
+    <script>
+        function clearInput() {
+            document.getElementById('shareText').value = '';
+            document.getElementById('errorMsg').classList.remove('show');
+            document.getElementById('resultBox').classList.remove('show');
+            document.getElementById('imageGrid').innerHTML = '';
+            document.getElementById('shareText').focus();
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+        }
+
+        function openLightbox(src) {
+            document.getElementById('lightboxImage').src = src;
+            document.getElementById('lightbox').classList.add('show');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('show');
+        }
+
+        async function startDownload() {
+            const shareText = document.getElementById('shareText').value.trim();
+            const btn = document.getElementById('downloadBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            const resultBox = document.getElementById('resultBox');
+            const resultTitle = document.getElementById('resultTitle');
+            const resultMeta = document.getElementById('resultMeta');
+            const imageGrid = document.getElementById('imageGrid');
+            const fileList = document.getElementById('fileList');
+
+            errorMsg.classList.remove('show');
+            resultBox.classList.remove('show');
+            imageGrid.innerHTML = '';
+
+            if (!shareText) {
+                errorMsg.textContent = '请输入抖音分享文本或链接';
+                errorMsg.classList.add('show');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>下载中...';
+
+            try {
+                const resp = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ share_text: shareText }),
+                });
+
+                const data = await resp.json();
+
+                if (!resp.ok) {
+                    throw new Error(data.error || '下载失败');
+                }
+
+                resultTitle.textContent = data.title || '（无标题）';
+                resultMeta.textContent = data.is_image_post ? '📷 图文作品（' + data.files.length + ' 个文件）' : '🎬 视频作品';
+                resultMeta.className = 'result-meta' + (data.is_image_post ? ' image-post' : '');
+
+                imageGrid.innerHTML = '';
+                fileList.innerHTML = '';
+
+                if (data.is_image_post) {
+                    const imageFiles = data.files.filter(f => f.type === 'image');
+                    imageFiles.forEach((file, index) => {
+                        const url = '/api/file/' + encodeURIComponent(file.filename);
+                        const div = document.createElement('div');
+                        div.className = 'image-item';
+                        div.onclick = () => openLightbox(url);
+                        div.innerHTML = `
+                            <img src="${url}" alt="图片${index + 1}" loading="lazy">
+                            <div class="image-overlay">
+                                <span class="image-index">图片 ${index + 1}</span>
+                            </div>
+                            <a class="image-download-overlay" href="${url}" download="${file.filename}" onclick="event.stopPropagation()">
+                                ↓
+                            </a>
+                        `;
+                        imageGrid.appendChild(div);
+                    });
+                }
+
+                data.files.forEach(file => {
+                    const li = document.createElement('li');
+                    li.className = 'file-item';
+
+                    let iconText = '🎬';
+                    let iconClass = '';
+                    if (file.type === 'image') {
+                        iconText = '🖼️';
+                        iconClass = 'image';
+                    } else if (file.type === 'audio') {
+                        iconText = '🎵';
+                        iconClass = 'audio';
+                    }
+
+                    li.innerHTML = `
+                        <div class="file-info">
+                            <div class="file-icon ${iconClass}">${iconText}</div>
+                            <div>
+                                <div class="file-name" title="${file.filename}">${file.filename}</div>
+                                <div class="file-size">${formatSize(file.size)}</div>
+                            </div>
+                        </div>
+                        <a class="download-btn" href="/api/file/${encodeURIComponent(file.filename)}" download="${file.filename}">下载</a>
+                    `;
+                    fileList.appendChild(li);
+                });
+
+                resultBox.classList.add('show');
+            } catch (err) {
+                errorMsg.textContent = err.message;
+                errorMsg.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '立即下载';
+            }
+        }
+
+        document.getElementById('shareText').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                startDownload();
+            }
+        });
+    </script>
+</body>
+</html>
