@@ -7,6 +7,7 @@
 - 🎬 **普通视频下载**：一键下载无水印 mp4
 - 🖼️ **图文作品支持**：自动识别图文，下载全部图片 + 背景音乐
 - 🖥️ **Web 界面**：基于 Flask 的可视化界面，浏览器一键下载
+- 🐳 **Docker 部署**：一条命令构建镜像，开箱即用地运行 Web 服务
 - 📦 **零额外依赖**：核心仅需 `requests`，Web 版额外需要 `Flask`
 
 ## 原理
@@ -80,6 +81,57 @@ python web/app.py
 
 粘贴分享文本 → 点击「立即下载」→ 点击文件列表的下载按钮即可保存到本地。
 
+### Docker 部署
+
+镜像封装了 Web 服务（基于 gunicorn 提供，比 Flask 自带开发服务器更适合对外）。
+
+构建镜像：
+
+```bash
+docker build -t douyin-dl:latest .
+```
+
+运行容器（下载产物持久化到宿主 `./downloads`）：
+
+```bash
+docker run -d -p 5000:5000 -v "$PWD/downloads:/app/downloads" --name douyin-dl douyin-dl:latest
+```
+
+浏览器访问：http://127.0.0.1:5000
+
+也可在容器内直接调用命令行版：
+
+```bash
+docker run --rm -v "$PWD/downloads:/app/downloads" douyin-dl:latest python -m douyin_dl "<分享文本>"
+```
+
+> 若所在网络无法直连 Docker Hub，可先用镜像源拉取基础镜像并 retag，再以 `DOCKER_BUILDKIT=0 docker build` 复用本地基础镜像。例如：
+>
+> ```bash
+> docker pull docker.m.daocloud.io/library/python:3.12-slim
+> docker tag docker.m.daocloud.io/library/python:3.12-slim python:3.12-slim
+> DOCKER_BUILDKIT=0 docker build -t douyin-dl:latest .
+> ```
+
+### 镜像发布（GitHub Actions → GHCR）
+
+仓库已内置工作流 [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml)，自动构建并推送镜像到 **GitHub Container Registry（`ghcr.io`）**。
+
+触发时机：
+- push 到 `master` 分支 → 推送 `master` 标签的镜像；
+- 打 `v*` 版本 tag（如 `v1.2.0`）→ 推送 `1.2.0`、`1.2` 等语义化版本标签；
+- 也可在 Actions 页面手动触发（`workflow_dispatch`）。
+
+无需额外配置 Secret——工作流用内置 `GITHUB_TOKEN` 登录 GHCR（已在 `permissions` 中授予 `packages: write`）。
+
+发布后拉取镜像（`<owner>` 为你的 GitHub 用户名/组织名，需小写）：
+
+```bash
+docker pull ghcr.io/<owner>/douyin-dl:latest
+```
+
+> 首次发布的 package 默认私有；如需公开，到 GitHub 的 Packages → 该 package → Settings 调整可见性，并可关联到本仓库。
+
 ## 实测情况（冒烟验证）
 
 已用示例分享文本完成**真实联网端到端验证**（2026-06，接口可用）：
@@ -126,6 +178,13 @@ web/
 ├── app.py          # Flask 后端 + API
 └── templates/
     └── index.html  # 前端页面
+
+Dockerfile          # Web 服务镜像（gunicorn 提供）
+.dockerignore       # 构建上下文排除规则
+
+.github/
+└── workflows/
+    └── docker-publish.yml  # 构建并推送镜像到 GHCR
 ```
 
 ## 常见问题
