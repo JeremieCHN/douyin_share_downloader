@@ -10,6 +10,8 @@
 - **CLI 命令行**：`python -m douyin_dl "<分享文本>"`
 - **Web 界面**：`python web/app.py`，浏览器访问 http://127.0.0.1:5000
 
+也提供 **Docker 镜像**（[Dockerfile](Dockerfile)）封装 Web 服务，用 gunicorn 对外提供，详见「Docker 部署」一节。
+
 核心原理：
 - 视频：播放地址里 `playwm`（watermark，带水印）替换为 `play` 即得无水印直链。
 - 图文：从 `images` 字段取图片列表（`download_url_list` 优先），附背景音乐。
@@ -36,6 +38,30 @@ python -m douyin_dl "<分享文本>" --dry-run         # 仅解析、不下载
 # Web 界面
 python web/app.py                                   # 启动后访问 http://127.0.0.1:5000
 ```
+
+## Docker 部署
+
+[Dockerfile](Dockerfile) 仅封装 **Web 服务**，以 gunicorn 启动（`web.app:app`），不使用 Flask 自带的 `debug=True` 开发服务器（后者会暴露 Werkzeug 调试器，不适合对外）。
+
+```bash
+docker build -t douyin-dl:latest .
+docker run -d -p 5000:5000 -v "$PWD/downloads:/app/downloads" --name douyin-dl douyin-dl:latest
+```
+
+约定与注意：
+- **gunicorn 只装在镜像内**（`Dockerfile` 的 `pip install` 行追加），刻意不写进 [requirements.txt](requirements.txt)，避免 CLI 用户安装多余依赖。
+- **worker 超时放宽到 300s**：视频/图文下载可能耗时较长，默认 30s 会中断大文件下载。
+- **`/app/downloads` 为数据卷**：下载产物挂载到宿主持久化。
+- **`web.app:app` 以命名空间包导入**：`web/` 下无 `__init__.py`，依赖 Python3 命名空间包机制；若改动目录结构需保证该导入路径仍可用。
+- 受限网络无法直连 Docker Hub 时，先用镜像源（如 `docker.m.daocloud.io/library/python:3.12-slim`）拉取基础镜像并 retag 为 `python:3.12-slim`，再以 `DOCKER_BUILDKIT=0 docker build` 复用本地基础镜像。
+
+### 镜像发布（CI → GHCR）
+
+[.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) 在 push `master`、打 `v*` tag 或手动触发时，构建并推送镜像到 GitHub Container Registry（`ghcr.io/<owner>/douyin-dl`，owner 自动转小写）。
+
+- 用内置 `GITHUB_TOKEN` 登录 GHCR，workflow 已声明 `permissions: packages: write`，**无需额外配置 Secret**。
+- 标签策略由 `docker/metadata-action` 生成：分支名、语义化版本（`v1.2.0` → `1.2.0`/`1.2`）、commit sha。
+- 改触发分支 / 镜像名 / 注册表时同步改该 workflow；CI runner 能直连 Docker Hub，不需要上面的镜像源变通。
 
 ## 代码结构与职责
 
@@ -64,6 +90,14 @@ Web 接口：
 - `POST /api/parse` — 仅解析，返回 `VideoInfo` JSON
 - `POST /api/download` — 解析 + 下载到服务器，返回文件列表
 - `GET /api/file/<filename>` — 下载已保存的文件
+
+### 部署文件
+
+| 文件 | 职责 |
+|------|------|
+| [Dockerfile](Dockerfile) | Web 服务镜像，基于 `python:3.12-slim`，gunicorn 启动 `web.app:app` |
+| [.dockerignore](.dockerignore) | 构建上下文排除规则（下载产物、虚拟环境、`_vendor/`、`.git` 等） |
+| [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) | CI：构建并推送镜像到 GHCR（`ghcr.io`） |
 
 ## 关键约定（改代码时请遵守）
 
