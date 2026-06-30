@@ -138,6 +138,26 @@ def api_file(filename):
     )
 
 
+@app.route("/api/clear", methods=["POST"])
+def api_clear():
+    """清空 downloads 目录下的所有文件。"""
+    download_dir = app.config["DOWNLOAD_DIR"]
+    if not os.path.isdir(download_dir):
+        return jsonify({"deleted": 0})
+
+    deleted = 0
+    try:
+        for name in os.listdir(download_dir):
+            path = os.path.join(download_dir, name)
+            if os.path.isfile(path):
+                os.remove(path)
+                deleted += 1
+    except OSError as e:
+        return jsonify({"error": f"清理失败: {e}"}), 500
+
+    return jsonify({"deleted": deleted})
+
+
 def main():
     os.makedirs(app.config["DOWNLOAD_DIR"], exist_ok=True)
     print("抖音无水印下载 Web 版")

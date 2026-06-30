@@ -152,6 +152,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 12px;
             padding: 12px 16px;
             background: #fff;
             border-radius: 8px;
@@ -164,6 +165,12 @@
             align-items: center;
             gap: 12px;
             min-width: 0;
+            flex: 1;
+        }
+
+        .file-text {
+            min-width: 0;
+            flex: 1;
         }
 
         .file-icon {
@@ -192,11 +199,9 @@
         .file-name {
             font-size: 14px;
             color: #333;
-            word-break: break-all;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            max-width: 280px;
         }
 
         .file-size {
@@ -267,11 +272,53 @@
             line-height: 1.6;
         }
 
+        .footer-actions {
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .clear-files-btn {
+            flex: none;
+            padding: 8px 14px;
+            background: transparent;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            color: #888;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .clear-files-btn:hover:not(:disabled) {
+            border-color: #e57373;
+            color: #c62828;
+            background: #fdecea;
+        }
+
+        .footer-hint {
+            font-size: 13px;
+            color: #999;
+        }
+
         .image-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 12px;
             margin-bottom: 20px;
+        }
+
+        .video-preview {
+            margin-bottom: 20px;
+        }
+
+        .video-preview video {
+            width: 100%;
+            max-height: 60vh;
+            border-radius: 8px;
+            background: #000;
+            display: block;
         }
 
         .image-item {
@@ -383,6 +430,40 @@
         .image-item:hover .image-download-overlay {
             opacity: 1;
         }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            .container {
+                padding: 24px 16px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .subtitle {
+                margin-bottom: 24px;
+            }
+
+            .result {
+                padding: 16px;
+            }
+
+            .file-item {
+                padding: 10px 12px;
+            }
+
+            .download-btn {
+                padding: 8px 12px;
+            }
+
+            .image-grid {
+                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            }
+        }
     </style>
 </head>
 <body>
@@ -404,6 +485,7 @@
         <div class="result" id="resultBox">
             <div class="result-title" id="resultTitle"></div>
             <span class="result-meta" id="resultMeta"></span>
+            <div class="video-preview" id="videoPreview"></div>
             <div class="image-grid" id="imageGrid"></div>
             <ul class="file-list" id="fileList"></ul>
         </div>
@@ -416,6 +498,11 @@
         <div class="tip">
             💡 支持普通视频和图文作品。分享文本可直接从抖音 App 「分享 → 复制链接」获取。
         </div>
+
+        <div class="footer-actions">
+            <button class="clear-files-btn" id="clearFilesBtn" onclick="clearFiles()">🗑 清理服务器已下载文件</button>
+            <span class="footer-hint" id="clearHint"></span>
+        </div>
     </div>
 
     <script>
@@ -424,6 +511,7 @@
             document.getElementById('errorMsg').classList.remove('show');
             document.getElementById('resultBox').classList.remove('show');
             document.getElementById('imageGrid').innerHTML = '';
+            document.getElementById('videoPreview').innerHTML = '';
             document.getElementById('shareText').focus();
         }
 
@@ -450,11 +538,13 @@
             const resultTitle = document.getElementById('resultTitle');
             const resultMeta = document.getElementById('resultMeta');
             const imageGrid = document.getElementById('imageGrid');
+            const videoPreview = document.getElementById('videoPreview');
             const fileList = document.getElementById('fileList');
 
             errorMsg.classList.remove('show');
             resultBox.classList.remove('show');
             imageGrid.innerHTML = '';
+            videoPreview.innerHTML = '';
 
             if (!shareText) {
                 errorMsg.textContent = '请输入抖音分享文本或链接';
@@ -503,6 +593,17 @@
                         `;
                         imageGrid.appendChild(div);
                     });
+                } else {
+                    const videoFile = data.files.find(f => f.type === 'video');
+                    if (videoFile) {
+                        const url = '/api/file/' + encodeURIComponent(videoFile.filename);
+                        const video = document.createElement('video');
+                        video.src = url;
+                        video.controls = true;
+                        video.setAttribute('playsinline', '');
+                        video.preload = 'metadata';
+                        videoPreview.appendChild(video);
+                    }
                 }
 
                 data.files.forEach(file => {
@@ -522,7 +623,7 @@
                     li.innerHTML = `
                         <div class="file-info">
                             <div class="file-icon ${iconClass}">${iconText}</div>
-                            <div>
+                            <div class="file-text">
                                 <div class="file-name" title="${file.filename}">${file.filename}</div>
                                 <div class="file-size">${formatSize(file.size)}</div>
                             </div>
@@ -547,6 +648,31 @@
                 startDownload();
             }
         });
+
+        async function clearFiles() {
+            if (!confirm('确定清空服务器 downloads 目录下的所有文件吗？此操作不可恢复。')) {
+                return;
+            }
+
+            const btn = document.getElementById('clearFilesBtn');
+            const hint = document.getElementById('clearHint');
+            btn.disabled = true;
+            hint.textContent = '清理中...';
+
+            try {
+                const resp = await fetch('/api/clear', { method: 'POST' });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    throw new Error(data.error || '清理失败');
+                }
+                hint.textContent = `已清理 ${data.deleted} 个文件`;
+                clearInput();
+            } catch (err) {
+                hint.textContent = err.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>
